@@ -36,8 +36,11 @@ void sig_handler( int sig ) {
     /* 保留原来的 errno，在函数最后恢复，以保证函数的重入性 */
     int save_errno = errno;
     int msg = sig;
+    printf( "now in the signal handler funciton\n" );
+    sleep( 8 );
+    printf( "end sleep, begin send signal to main loop\n" );
     send( pipefd[1], ( char* )&msg, 1, 0 ); /* 将信号值传入管道，以通知主循环 */
-    errno = save_errno;
+    errno = save_errno;  // 难道是保证 send 管道时的错误影响 errno？
 }
 
 /* 设置信号的处理函数 */
@@ -45,8 +48,8 @@ void addsig( int sig ){
     struct sigaction sa;
     memset( &sa, '\0', sizeof( sa ) );
     sa.sa_handler = sig_handler;
-    sa.sa_flags |= SA_RESTART;
-    sigfillset( &sa.sa_mask ); // 为什么要把所有的信号都阻塞了呢？处理的时候把
+    sa.sa_flags |= SA_RESTART;  // 不设置这个的话，信号中断以后原来阻塞的系统调用（这里是 epoll）不会重新启用
+    sigfillset( &sa.sa_mask ); // 为什么要把所有的信号都阻塞了呢？这个 mask 的作用应该是指处理函数的时候阻塞哪些信号吧！
     assert( sigaction( sig, &sa, NULL ) != -1 );
 }
 
